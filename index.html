@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0b1220">
+
+    <title>XAUUSD Trading Signals H1</title>
+
+    <link rel="stylesheet" href="style.css">
+    <script src="app.js" defer></script>
+</head>
+
+<body>
+
+<header class="topbar">
+    <div class="logo">Au</div>
+
+    <div>
+        <p class="eyebrow">TRADING INTELLIGENCE</p>
+        <h1>XAUUSD <span>H1</span></h1>
+    </div>
+
+    <div class="status">
+        <span id="status-dot"></span>
+        <span id="connection-status">Connexion...</span>
+    </div>
+</header>
+
+<main>
+
+    <section class="panel hero">
+        <div>
+            <p class="eyebrow">OR / DOLLAR AMÉRICAIN</p>
+
+            <div class="price-line">
+                <span id="current-price">—</span>
+                <span id="price-change"></span>
+            </div>
+
+            <p class="muted">
+                Prix actuel : <span id="market-state">Chargement...</span>
+            </p>
+        </div>
+
+        <div class="refresh-box">
+            <span class="muted">Actualisation dans</span>
+            <strong><span id="countdown">60</span> s</strong>
+
+            <button id="refresh-button">
+                Actualiser maintenant
+            </button>
+        </div>
+    </section>
+
+
+    <section class="grid">
+
+        <article class="panel">
+            <div class="section-heading">
+                <h2>Signal de trading</h2>
+                <span class="tag">H1</span>
+            </div>
+
+            <div id="signal-badge" class="signal-badge wait">
+                ANALYSE EN COURS
+            </div>
+
+            <p id="signal-reason" class="muted">
+                Analyse du marché...
+            </p>
+
+            <div class="signal-data">
+
+                <div class="data-box">
+                    <span>Prix d'entrée</span>
+                    <strong id="entry-price">—</strong>
+                </div>
+
+                <div class="data-box">
+                    <span>Stop Loss</span>
+                    <strong id="stop-loss">—</strong>
+                </div>
+
+                <div class="data-box">
+                    <span>Take Profit</span>
+                    <strong id="take-profit">—</strong>
+                </div>
+
+                <div class="data-box">
+                    <span>Ratio risque/rendement</span>
+                    <strong id="risk-reward">—</strong>
+                </div>
+
+            </div>
+
+            <p class="disclaimer">
+                Signaux indicatifs. Vérifie le prix et le spread chez ton courtier.
+                Aucun ordre n'est exécuté automatiquement.
+            </p>
+        </article>
+
+
+        <article class="panel">
+            <div class="section-heading">
+                <h2>Indicateurs techniques</h2>
+                <span class="tag">H1</span>
+            </div>
+
+            <div class="indicators">
+
+                <div class="indicator">
+                    <span>EMA 50</span>
+                    <strong id="ema-fast">—</strong>
+                    <small id="ema-fast-note">—</small>
+                </div>
+
+                <div class="indicator">
+                    <span>EMA 200</span>
+                    <strong id="ema-slow">—</strong>
+                    <small id="ema-slow-note">—</small>
+                </div>
+
+                <div class="indicator">
+                    <span>RSI 14</span>
+                    <strong id="rsi-value">—</strong>
+                    <small id="rsi-note">—</small>
+                </div>
+
+                <div class="indicator">
+                    <span>ATR 14</span>
+                    <strong id="atr-value">—</strong>
+                    <small>Volatilité</small>
+                </div>
+
+            </div>
+        </article>
+
+    </section>
+
+
+    <section class="panel market-panel">
+
+        <div class="section-heading">
+            <h2>État du marché</h2>
+            <span class="tag">XAUUSD UNIQUEMENT</span>
+        </div>
+
+        <div class="market-grid">
+
+            <div class="data-box">
+                <span>Tendance générale</span>
+                <strong id="trend-value">—</strong>
+            </div>
+
+            <div class="data-box">
+                <span>Dernière bougie clôturée</span>
+                <strong id="last-candle">—</strong>
+            </div>
+
+            <div class="data-box">
+                <span>Dernière actualisation</span>
+                <strong id="last-update">—</strong>
+            </div>
+
+            <div class="data-box">
+                <span>Bougies analysées</span>
+                <strong id="bars-count">—</strong>
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <section id="error-panel" class="error-panel" hidden>
+        <strong>Erreur de connexion</strong>
+        <p id="error-message"></p>
+    </section>
+
+
+    <footer>
+        <p>XAUUSD Trading Signals — Analyse technique H1</p>
+        <p>Données : Biquote API</p>
+        <p>Les signaux ne garantissent aucun bénéfice financier.</p>
+    </footer>
+
+</main>
+
+</body>
+          </html>
