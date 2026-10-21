@@ -5,15 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#0b1220">
 
-    <title>XAUUSD Trading Signals H1</title>
+    <title>TRADING INTELLIGENCE | XAUUSD H1</title>
 
     <link rel="stylesheet" href="style.css">
-    <script src="app.js?v=2" defer></script>
+
+    <!-- Chargement du JavaScript -->
+    <script src="app.js?v=4" defer></script>
 </head>
 
 <body>
 
 <header class="topbar">
+
     <div class="logo">Au</div>
 
     <div>
@@ -25,11 +28,15 @@
         <span id="status-dot"></span>
         <span id="connection-status">Connexion...</span>
     </div>
+
 </header>
 
 <main>
 
+    <!-- PRIX DU MARCHÉ -->
+
     <section class="panel hero">
+
         <div>
             <p class="eyebrow">OR / DOLLAR AMÉRICAIN</p>
 
@@ -39,24 +46,34 @@
             </div>
 
             <p class="muted">
-                Prix actuel : <span id="market-state">Chargement...</span>
+                Prix actuel :
+                <span id="market-state">Chargement...</span>
             </p>
         </div>
 
         <div class="refresh-box">
             <span class="muted">Actualisation dans</span>
-            <strong><span id="countdown">60</span> s</strong>
+
+            <strong>
+                <span id="countdown">60</span> s
+            </strong>
 
             <button id="refresh-button">
                 Actualiser maintenant
             </button>
         </div>
+
     </section>
 
 
+    <!-- SIGNAL ET INDICATEURS -->
+
     <section class="grid">
 
+        <!-- SIGNAL DE TRADING -->
+
         <article class="panel">
+
             <div class="section-heading">
                 <h2>Signal de trading</h2>
                 <span class="tag">H1</span>
@@ -95,13 +112,17 @@
             </div>
 
             <p class="disclaimer">
-                Signaux indicatifs. Vérifie le prix et le spread chez ton courtier.
-                Aucun ordre n'est exécuté automatiquement.
+                Signaux indicatifs. Vérifie le prix et le spread chez ton
+                courtier. Aucun ordre n'est exécuté automatiquement.
             </p>
+
         </article>
 
 
+        <!-- INDICATEURS TECHNIQUES -->
+
         <article class="panel">
+
             <div class="section-heading">
                 <h2>Indicateurs techniques</h2>
                 <span class="tag">H1</span>
@@ -112,19 +133,19 @@
                 <div class="indicator">
                     <span>EMA 50</span>
                     <strong id="ema-fast">—</strong>
-                    <small id="ema-fast-note">—</small>
+                    <small id="ema-fast-note">En attente</small>
                 </div>
 
                 <div class="indicator">
                     <span>EMA 200</span>
                     <strong id="ema-slow">—</strong>
-                    <small id="ema-slow-note">—</small>
+                    <small id="ema-slow-note">En attente</small>
                 </div>
 
                 <div class="indicator">
                     <span>RSI 14</span>
                     <strong id="rsi-value">—</strong>
-                    <small id="rsi-note">—</small>
+                    <small id="rsi-note">En attente</small>
                 </div>
 
                 <div class="indicator">
@@ -134,10 +155,13 @@
                 </div>
 
             </div>
+
         </article>
 
     </section>
 
+
+    <!-- ÉTAT DU MARCHÉ -->
 
     <section class="panel market-panel">
 
@@ -173,19 +197,32 @@
     </section>
 
 
+    <!-- ERREURS ET INFORMATIONS -->
+
     <section id="error-panel" class="error-panel" hidden>
-        <strong>Erreur de connexion</strong>
+
+        <strong>Information / avertissement</strong>
+
         <p id="error-message"></p>
+
     </section>
 
 
+    <!-- PIED DE PAGE -->
+
     <footer>
+
         <p>XAUUSD Trading Signals — Analyse technique H1</p>
+
         <p>Données : Biquote API</p>
-        <p>Les signaux ne garantissent aucun bénéfice financier.</p>
+
+        <p>
+            Les signaux sont indicatifs et ne garantissent aucun bénéfice.
+        </p>
+
     </footer>
 
 </main>
 
 </body>
-          </html>
+</html>
