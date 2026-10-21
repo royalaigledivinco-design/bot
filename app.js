@@ -1,8 +1,8 @@
 "use strict";
 
-// ==================================================
+// =====================================================
 // 1. CONFIGURATION
-// ==================================================
+// =====================================================
 
 const CONFIG = {
     PRICE_URL: "https://biquote.io/api/XAUUSD?allowStale=false",
@@ -19,23 +19,21 @@ const CONFIG = {
     TP_ATR_MULTIPLIER: 2.0,
 
     MAX_QUOTE_AGE_SECONDS: 300,
-
-    // Nombre minimal pour calculer les indicateurs.
-    MIN_CANDLES: 200
+    MIN_CANDLES_FOR_ANALYSIS: 15
 };
 
-// ==================================================
-// 2. ÉTAT DE L'APPLICATION
-// ==================================================
+// =====================================================
+// 2. VARIABLES
+// =====================================================
 
 let refreshing = false;
 let countdown = 60;
 let refreshTimer = null;
 let countdownTimer = null;
 
-// ==================================================
+// =====================================================
 // 3. UTILITAIRES
-// ==================================================
+// =====================================================
 
 const $ = id => document.getElementById(id);
 
@@ -124,9 +122,9 @@ async function fetchJSON(url) {
     return response.json();
 }
 
-// ==================================================
-// 4. CALCUL DE L'EMA
-// ==================================================
+// =====================================================
+// 4. CALCUL EMA
+// =====================================================
 
 function calculateEMA(values, period) {
     if (!Array.isArray(values) || values.length < period) {
@@ -157,9 +155,9 @@ function calculateEMA(values, period) {
     return result;
 }
 
-// ==================================================
-// 5. CALCUL DU RSI
-// ==================================================
+// =====================================================
+// 5. CALCUL RSI
+// =====================================================
 
 function calculateRSI(values, period = 14) {
     if (!Array.isArray(values) || values.length <= period) {
@@ -204,9 +202,9 @@ function calculateRSI(values, period = 14) {
     return 100 - 100 / (1 + relativeStrength);
 }
 
-// ==================================================
-// 6. CALCUL DE L'ATR
-// ==================================================
+// =====================================================
+// 6. CALCUL ATR
+// =====================================================
 
 function calculateATR(bars, period = 14) {
     if (!Array.isArray(bars) || bars.length < period + 1) {
@@ -244,9 +242,9 @@ function calculateATR(bars, period = 14) {
     return atr;
 }
 
-// ==================================================
+// =====================================================
 // 7. NORMALISATION DES BOUGIES
-// ==================================================
+// =====================================================
 
 function normalizeCandles(data) {
     if (!data || !Array.isArray(data.bars)) {
@@ -256,13 +254,7 @@ function normalizeCandles(data) {
     }
 
     const bars = data.bars
-        .filter(bar => {
-            if (!bar || bar.isOpen === true) {
-                return false;
-            }
-
-            return true;
-        })
+        .filter(bar => bar && bar.isOpen !== true)
         .map(bar => ({
             openTime: new Date(bar.openTime).getTime(),
             open: Number(bar.open),
@@ -270,26 +262,21 @@ function normalizeCandles(data) {
             low: Number(bar.low),
             close: Number(bar.close)
         }))
-        .filter(bar => {
-            return (
-                Number.isFinite(bar.openTime) &&
-                Number.isFinite(bar.open) &&
-                Number.isFinite(bar.high) &&
-                Number.isFinite(bar.low) &&
-                Number.isFinite(bar.close) &&
-                bar.open > 0 &&
-                bar.high > 0 &&
-                bar.low > 0 &&
-                bar.close > 0 &&
-                bar.high >= bar.low
-            );
-        });
+        .filter(bar =>
+            Number.isFinite(bar.openTime) &&
+            Number.isFinite(bar.open) &&
+            Number.isFinite(bar.high) &&
+            Number.isFinite(bar.low) &&
+            Number.isFinite(bar.close) &&
+            bar.open > 0 &&
+            bar.high > 0 &&
+            bar.low > 0 &&
+            bar.close > 0 &&
+            bar.high >= bar.low
+        )
+        .sort((a, b) => a.openTime - b.openTime);
 
-    // L'API renvoie les bougies les plus récentes en premier.
-    // Les indicateurs doivent être calculés chronologiquement.
-    bars.sort((a, b) => a.openTime - b.openTime);
-
-    // Élimination des doublons de bougies.
+    // Supprimer les bougies en double.
     const uniqueBars = [];
 
     for (const bar of bars) {
@@ -300,20 +287,99 @@ function normalizeCandles(data) {
         }
     }
 
-    if (uniqueBars.length < CONFIG.MIN_CANDLES) {
+    if (uniqueBars.length < CONFIG.MIN_CANDLES_FOR_ANALYSIS) {
         throw new Error(
-            `Historique insuffisant : ${uniqueBars.length} bougies H1 valides reçues. ` +
-            `Il en faut au moins ${CONFIG.MIN_CANDLES} pour calculer correctement l'EMA 200. ` +
-            `Le paramètre limit=500 ne garantit pas que l'API fournisse 500 bougies.`
+            `Historique insuffisant : ${uniqueBars.length} bougies valides.`
         );
     }
 
     return uniqueBars;
 }
 
-// ==================================================
-// 8. AFFICHAGE DU SIGNAL
-// ==================================================
+// =====================================================
+// 8. VALIDATION DE LA COTATION
+// =====================================================
+
+function validateQuote(quote) {
+    if (!quote || typeof quote !== "object") {
+        throw new Error("La cotation reçue est invalide.");
+    }
+
+    if (quote.symbol && quote.symbol !== "XAUUSD") {
+        throw new Error(
+            `Symbole inattendu : ${quote.symbol}. XAUUSD est attendu.`
+        );
+    }
+
+    const bid = Number(quote.bid);
+    const ask = Number(quote.ask);
+    const providedMid = Number(quote.mid);
+
+    if (
+        !Number.isFinite(bid) ||
+        !Number.isFinite(ask) ||
+        bid <= 0 ||
+        ask <= 0 ||
+        ask < bid
+    ) {
+        throw new Error(
+            "Les prix bid et ask reçus sont invalides."
+        );
+    }
+
+    const mid =
+        Number.isFinite(providedMid) && providedMid > 0
+            ? providedMid
+            : (bid + ask) / 2;
+
+    return {
+        ...quote,
+        bid,
+        ask,
+        mid
+    };
+}
+
+// =====================================================
+// 9. AFFICHAGE DU PRIX
+// =====================================================
+
+function displayQuote(quote) {
+    setText("current-price", formatPrice(quote.mid));
+
+    const dayChange = Number(quote.dayDiffPercent);
+
+    setText(
+        "price-change",
+        Number.isFinite(dayChange)
+            ? `${dayChange >= 0 ? "+" : ""}${dayChange.toLocaleString(
+                "fr-FR",
+                {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 4
+                }
+            )} %`
+            : "—"
+    );
+
+    let marketState = "État non communiqué";
+
+    if (quote.marketState === "open") {
+        marketState = "Marché ouvert";
+    } else if (quote.marketState === "closed") {
+        marketState = "Marché fermé";
+    }
+
+    setText("market-state", marketState);
+
+    if (Number.isFinite(Number(quote.spread))) {
+        setText("spread-value", formatPrice(quote.spread));
+    }
+}
+
+// =====================================================
+// 10. GESTION DU SIGNAL
+// =====================================================
 
 function displaySignal(
     type,
@@ -360,104 +426,19 @@ function displaySignal(
         "risk-reward",
         entry === null
             ? "—"
-            : `1 : ${(
+            : "1 : " + (
                 CONFIG.TP_ATR_MULTIPLIER /
                 CONFIG.SL_ATR_MULTIPLIER
-            ).toFixed(2).replace(".", ",")}`
+            ).toFixed(2).replace(".", ",")
     );
 }
 
-// ==================================================
-// 9. VALIDATION DE LA COTATION
-// ==================================================
-
-function validateQuote(quote) {
-    if (!quote || typeof quote !== "object") {
-        throw new Error("La cotation reçue est vide ou invalide.");
-    }
-
-    if (quote.symbol && quote.symbol !== "XAUUSD") {
-        throw new Error(
-            `Symbole inattendu : ${quote.symbol}. XAUUSD est attendu.`
-        );
-    }
-
-    const bid = Number(quote.bid);
-    const ask = Number(quote.ask);
-    const mid = Number(quote.mid);
-
-    if (
-        !Number.isFinite(bid) ||
-        !Number.isFinite(ask) ||
-        bid <= 0 ||
-        ask <= 0 ||
-        ask < bid
-    ) {
-        throw new Error(
-            "Les prix bid et ask de la cotation sont invalides."
-        );
-    }
-
-    // Si mid est absent ou invalide, on calcule le milieu du spread.
-    const validMid =
-        Number.isFinite(mid) && mid > 0
-            ? mid
-            : (bid + ask) / 2;
-
-    return {
-        ...quote,
-        bid,
-        ask,
-        mid: validMid
-    };
-}
-
-// ==================================================
-// 10. AFFICHAGE DES INFORMATIONS DU PRIX
-// ==================================================
-
-function displayQuote(quote) {
-    setText("current-price", formatPrice(quote.mid));
-
-    const dayChange = Number(quote.dayDiffPercent);
-
-    setText(
-        "price-change",
-        Number.isFinite(dayChange)
-            ? `${dayChange >= 0 ? "+" : ""}${dayChange.toLocaleString(
-                "fr-FR",
-                {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 4
-                }
-            )} %`
-            : "—"
-    );
-
-    let marketState = "État non communiqué";
-
-    if (quote.marketState === "open") {
-        marketState = "Marché ouvert";
-    } else if (quote.marketState === "closed") {
-        marketState = "Marché fermé";
-    }
-
-    setText("market-state", marketState);
-
-    const spread = Number(quote.spread);
-
-    if (Number.isFinite(spread)) {
-        setText("spread-value", formatPrice(spread));
-    }
-}
-
-// ==================================================
-// 11. ANALYSE DU MARCHÉ
-// ==================================================
+// =====================================================
+// 11. ANALYSE TECHNIQUE
+// =====================================================
 
 function analyzeMarket(candlesData, quote) {
     const bars = normalizeCandles(candlesData);
-
     const closes = bars.map(bar => bar.close);
 
     const fastEMA = calculateEMA(
@@ -472,8 +453,8 @@ function analyzeMarket(candlesData, quote) {
 
     const lastIndex = closes.length - 1;
 
-    const ema50 = fastEMA[lastIndex];
-    const ema200 = slowEMA[lastIndex];
+    const ema50 = fastEMA[lastIndex] ?? null;
+    const ema200 = slowEMA[lastIndex] ?? null;
 
     const rsi = calculateRSI(
         closes,
@@ -485,50 +466,70 @@ function analyzeMarket(candlesData, quote) {
         CONFIG.ATR_PERIOD
     );
 
-    if (
-        !Number.isFinite(ema50) ||
-        !Number.isFinite(ema200) ||
-        !Number.isFinite(rsi) ||
-        !Number.isFinite(atr) ||
-        atr <= 0
-    ) {
-        throw new Error(
-            "Impossible de calculer correctement les indicateurs techniques."
-        );
-    }
-
-    setText("ema-fast", formatPrice(ema50));
-    setText("ema-slow", formatPrice(ema200));
-    setText("rsi-value", formatPrice(rsi));
-    setText("atr-value", formatPrice(atr));
+    // EMA 50
+    setText(
+        "ema-fast",
+        ema50 === null ? "—" : formatPrice(ema50)
+    );
 
     setText(
         "ema-fast-note",
-        ema50 > ema200
-            ? "Au-dessus de l'EMA 200"
-            : ema50 < ema200
-                ? "En dessous de l'EMA 200"
-                : "Moyennes égales"
+        ema50 === null
+            ? "Données insuffisantes"
+            : ema200 === null
+                ? "EMA 200 indisponible"
+                : ema50 > ema200
+                    ? "Au-dessus de l'EMA 200"
+                    : ema50 < ema200
+                        ? "En dessous de l'EMA 200"
+                        : "Moyennes égales"
     );
 
-    setText("ema-slow-note", "Tendance de fond");
+    // EMA 200
+    setText(
+        "ema-slow",
+        ema200 === null ? "Indisponible" : formatPrice(ema200)
+    );
+
+    setText(
+        "ema-slow-note",
+        ema200 === null
+            ? "200 bougies nécessaires"
+            : "Tendance de fond"
+    );
+
+    // RSI 14
+    setText(
+        "rsi-value",
+        rsi === null ? "—" : formatPrice(rsi)
+    );
 
     setText(
         "rsi-note",
-        rsi >= 70
-            ? "Surachat"
-            : rsi <= 30
-                ? "Survente"
-                : "Zone intermédiaire"
+        rsi === null
+            ? "Données insuffisantes"
+            : rsi >= 70
+                ? "Surachat"
+                : rsi <= 30
+                    ? "Survente"
+                    : "Zone intermédiaire"
+    );
+
+    // ATR 14
+    setText(
+        "atr-value",
+        atr === null ? "—" : formatPrice(atr)
     );
 
     setText(
         "trend-value",
-        ema50 > ema200
-            ? "Haussière"
-            : ema50 < ema200
-                ? "Baissière"
-                : "Neutre"
+        ema200 === null
+            ? "Indéterminée"
+            : ema50 > ema200
+                ? "Haussière"
+                : ema50 < ema200
+                    ? "Baissière"
+                    : "Neutre"
     );
 
     setText(
@@ -538,7 +539,7 @@ function analyzeMarket(candlesData, quote) {
 
     setText("bars-count", String(bars.length));
 
-    // Vérification de l'âge de la cotation.
+    // Vérifier que la cotation est récente.
     const timestamp = quote.timestamp
         ? new Date(quote.timestamp).getTime()
         : NaN;
@@ -566,21 +567,34 @@ function analyzeMarket(candlesData, quote) {
         setText("market-state", "Cotation périmée");
 
         throw new Error(
-            "La cotation XAUUSD est trop ancienne. Le signal est neutralisé."
+            "La cotation XAUUSD est trop ancienne."
         );
     }
 
     if (quote.marketState === "closed") {
         displaySignal(
             "WAIT",
-            "Le marché est déclaré fermé par la source de données."
+            "Le marché est déclaré fermé par la source."
         );
 
         return;
     }
 
-    const bid = quote.bid;
-    const ask = quote.ask;
+    // Sans EMA 200, pas de signal basé sur la tendance générale.
+    if (
+        ema50 === null ||
+        ema200 === null ||
+        rsi === null ||
+        atr === null ||
+        atr <= 0
+    ) {
+        displaySignal(
+            "WAIT",
+            "Indicateurs partiellement disponibles. L'EMA 200 est nécessaire pour confirmer un signal."
+        );
+
+        return;
+    }
 
     const stopDistance =
         atr * CONFIG.SL_ATR_MULTIPLIER;
@@ -596,10 +610,10 @@ function analyzeMarket(candlesData, quote) {
     ) {
         displaySignal(
             "BUY",
-            "Tendance haussière : EMA 50 supérieure à EMA 200 et RSI favorable.",
-            ask,
-            ask - stopDistance,
-            ask + targetDistance
+            "Tendance haussière confirmée par EMA 50 et EMA 200, avec RSI favorable.",
+            quote.ask,
+            quote.ask - stopDistance,
+            quote.ask + targetDistance
         );
 
         return;
@@ -613,25 +627,24 @@ function analyzeMarket(candlesData, quote) {
     ) {
         displaySignal(
             "SELL",
-            "Tendance baissière : EMA 50 inférieure à EMA 200 et RSI favorable.",
-            bid,
-            bid + stopDistance,
-            bid - targetDistance
+            "Tendance baissière confirmée par EMA 50 et EMA 200, avec RSI favorable.",
+            quote.bid,
+            quote.bid + stopDistance,
+            quote.bid - targetDistance
         );
 
         return;
     }
 
-    // Aucun signal suffisamment clair.
     displaySignal(
         "WAIT",
-        "Les conditions de la stratégie ne sont pas réunies. Attends une configuration plus claire."
+        "Les conditions de la stratégie ne sont pas réunies."
     );
 }
 
-// ==================================================
-// 12. ACTUALISATION DU TABLEAU DE BORD
-// ==================================================
+// =====================================================
+// 12. ACTUALISATION DES DONNÉES
+// =====================================================
 
 async function refreshData() {
     if (refreshing) {
@@ -649,7 +662,6 @@ async function refreshData() {
     setStatus("Actualisation...", "");
 
     try {
-        // Récupération du prix et de l'historique en parallèle.
         const results = await Promise.allSettled([
             fetchJSON(CONFIG.PRICE_URL),
             fetchJSON(CONFIG.CANDLES_URL)
@@ -658,106 +670,63 @@ async function refreshData() {
         const quoteResult = results[0];
         const candlesResult = results[1];
 
-        let validQuote = null;
-        let quoteError = null;
-
-        // Le prix peut s'afficher même si l'historique échoue.
-        if (quoteResult.status === "fulfilled") {
-            try {
-                validQuote = validateQuote(quoteResult.value);
-
-                displayQuote(validQuote);
-
-                const quoteAge = Number(
-                    validQuote.quoteAgeSeconds
-                );
-
-                const quoteIsStale =
-                    validQuote.stale === true ||
-                    (
-                        Number.isFinite(quoteAge) &&
-                        quoteAge > CONFIG.MAX_QUOTE_AGE_SECONDS
-                    );
-
-                if (quoteIsStale) {
-                    displaySignal(
-                        "WAIT",
-                        "Cotation trop ancienne. Attends une cotation actualisée."
-                    );
-                }
-            } catch (error) {
-                quoteError = error;
-            }
-        } else {
-            quoteError = quoteResult.reason;
-        }
-
-        // Si la cotation est invalide, on ne calcule aucun signal.
-        if (!validQuote || quoteError) {
+        // Récupération et affichage indépendants du prix.
+        if (quoteResult.status !== "fulfilled") {
             displaySignal(
                 "WAIT",
                 "Cotation indisponible. Aucun nouveau signal ne peut être confirmé."
             );
 
             throw new Error(
-                quoteError instanceof Error
-                    ? quoteError.message
-                    : "Impossible de récupérer la cotation XAUUSD."
+                "Impossible de récupérer le prix XAUUSD."
             );
         }
 
-        // Si le prix est ancien, aucun nouveau signal n'est autorisé.
-        const quoteTimestamp = validQuote.timestamp
-            ? new Date(validQuote.timestamp).getTime()
-            : NaN;
+        const quote = validateQuote(quoteResult.value);
 
-        const quoteAge = Number(
-            validQuote.quoteAgeSeconds
-        );
+        displayQuote(quote);
 
-        const quoteIsStale =
-            validQuote.stale === true ||
-            (
-                Number.isFinite(quoteAge) &&
-                quoteAge > CONFIG.MAX_QUOTE_AGE_SECONDS
-            ) ||
-            (
-                Number.isFinite(quoteTimestamp) &&
-                Date.now() - quoteTimestamp >
-                    CONFIG.MAX_QUOTE_AGE_SECONDS * 1000
-            );
-
-        if (quoteIsStale) {
-            displaySignal(
-                "WAIT",
-                "Cotation périmée : signal neutralisé."
-            );
-
-            throw new Error(
-                "La cotation reçue est trop ancienne."
-            );
-        }
-
+        // Même si l'historique est insuffisant, le prix reste visible.
         if (candlesResult.status !== "fulfilled") {
+            setText("ema-fast", "—");
+            setText("ema-slow", "—");
+            setText("rsi-value", "—");
+            setText("atr-value", "—");
+            setText("trend-value", "Indéterminée");
+            setText("bars-count", "—");
+
             displaySignal(
                 "WAIT",
                 "Prix disponible, mais historique des bougies inaccessible."
             );
 
             throw new Error(
-                "Impossible de récupérer les bougies H1. Vérifie la connexion à Biquote."
+                "Impossible de récupérer les bougies H1."
             );
         }
 
-        // Analyse technique indépendante de l'affichage du prix.
-        analyzeMarket(
-            candlesResult.value,
-            validQuote
-        );
+        try {
+            analyzeMarket(
+                candlesResult.value,
+                quote
+            );
 
-        hideError();
+            hideError();
 
-        setStatus("Connecté à Biquote", "ok");
+            setStatus("Connecté à Biquote", "ok");
+
+        } catch (analysisError) {
+            showError(
+                analysisError instanceof Error
+                    ? analysisError.message
+                    : "Erreur pendant l'analyse technique."
+            );
+
+            setStatus(
+                "Données partiellement disponibles",
+                "error"
+            );
+        }
 
         setLastUpdate();
 
@@ -768,7 +737,12 @@ async function refreshData() {
                 : "Une erreur inconnue est survenue."
         );
 
-        setStatus("Données partiellement disponibles", "error");
+        setStatus(
+            "Données partiellement disponibles",
+            "error"
+        );
+
+        setLastUpdate();
 
     } finally {
         refreshing = false;
@@ -783,9 +757,9 @@ async function refreshData() {
     }
 }
 
-// ==================================================
+// =====================================================
 // 13. INITIALISATION
-// ==================================================
+// =====================================================
 
 function initializeDashboard() {
     const refreshButton = $("refresh-button");
@@ -827,4 +801,4 @@ if (document.readyState === "loading") {
     );
 } else {
     initializeDashboard();
-        }
+}
