@@ -8,8 +8,7 @@ const CONFIG = {
     PRICE_URL: "https://biquote.io/api/XAUUSD?allowStale=false",
     CANDLES_URL: "https://biquote.io/api/XAUUSD/ohlc?interval=1h&limit=500",
 
-    EMA_FAST: 50,
-    EMA_SLOW: 200,
+    EMA_PERIOD: 50,
     RSI_PERIOD: 14,
     ATR_PERIOD: 14,
 
@@ -151,9 +150,7 @@ function validateQuote(data) {
     const bid = Number(data.bid);
     const ask = Number(data.ask);
 
-    const suppliedMid = Number(data.mid);
-
-    let mid = suppliedMid;
+    let mid = Number(data.mid);
 
     if (!Number.isFinite(mid) || mid <= 0) {
         mid = (bid + ask) / 2;
@@ -174,9 +171,9 @@ function validateQuote(data) {
     }
 
     return {
-        bid: bid,
-        ask: ask,
-        mid: mid,
+        bid,
+        ask,
+        mid,
         marketState: data.marketState || "unknown",
         dayDiffPercent: Number(data.dayDiffPercent)
     };
@@ -262,7 +259,6 @@ function normalizeCandles(response) {
             if (typeof bar.openTime === "number") {
                 timestamp = bar.openTime;
 
-                // Convertit les timestamps exprimés en secondes.
                 if (timestamp > 0 && timestamp < 100000000000) {
                     timestamp *= 1000;
                 }
@@ -292,7 +288,6 @@ function normalizeCandles(response) {
         )
         .sort((a, b) => a.time - b.time);
 
-    // Supprime les bougies dupliquées.
     const unique = [];
 
     for (const candle of candles) {
@@ -316,7 +311,7 @@ function normalizeCandles(response) {
 
 
 // ==================================================
-// 7. EMA
+// 7. CALCUL DE L'EMA 50
 // ==================================================
 
 function calculateEMA(values, period) {
@@ -349,7 +344,7 @@ function calculateEMA(values, period) {
 
 
 // ==================================================
-// 8. RSI
+// 8. CALCUL DU RSI 14
 // ==================================================
 
 function calculateRSI(values, period = 14) {
@@ -404,7 +399,7 @@ function calculateRSI(values, period = 14) {
 
 
 // ==================================================
-// 9. ATR
+// 9. CALCUL DE L'ATR 14
 // ==================================================
 
 function calculateATR(candles, period = 14) {
@@ -459,7 +454,7 @@ function calculateATR(candles, period = 14) {
 // ==================================================
 
 function displayIndicators(data) {
-    const { ema50, ema200, rsi, atr, price } = data;
+    const { ema50, rsi, atr, price } = data;
 
     setText(
         "ema-fast",
@@ -469,20 +464,12 @@ function displayIndicators(data) {
     setText(
         "ema-fast-note",
         Number.isFinite(ema50)
-            ? (price > ema50 ? "Prix au-dessus" : "Prix en dessous")
+            ? (price > ema50
+                ? "Prix au-dessus"
+                : price < ema50
+                    ? "Prix en dessous"
+                    : "Prix sur l'EMA 50")
             : "Historique insuffisant"
-    );
-
-    setText(
-        "ema-slow",
-        Number.isFinite(ema200) ? formatPrice(ema200) : "Indisponible"
-    );
-
-    setText(
-        "ema-slow-note",
-        Number.isFinite(ema200)
-            ? (price > ema200 ? "Prix au-dessus" : "Prix en dessous")
-            : "Historique insuffisant : 200 bougies nécessaires"
     );
 
     setText(
@@ -516,7 +503,7 @@ function displayIndicators(data) {
 
 
 // ==================================================
-// 11. TENDANCE GÉNÉRALE
+// 11. DÉTERMINATION DE LA TENDANCE
 // ==================================================
 
 function determineTrend(ema50, price, rsi) {
@@ -536,14 +523,13 @@ function determineTrend(ema50, price, rsi) {
 
 
 // ==================================================
-// 12. GÉNÉRATION DES SIGNAUX — MODE ÉQUILIBRÉ B
+// 12. GÉNÉRATION DES SIGNAUX SANS EMA 200
 // ==================================================
 
 function generateSignal(data) {
     const {
         price,
         ema50,
-        ema200,
         rsi,
         atr,
         previousClose,
@@ -567,33 +553,35 @@ function generateSignal(data) {
 
     const bullishCandle = lastClose > previousClose;
     const bearishCandle = lastClose < previousClose;
-    const ema200Available = Number.isFinite(ema200);
 
+    // Conditions d'achat : prix au-dessus de l'EMA 50,
+    // RSI haussier et dernière bougie confirmant la hausse.
     const buyCondition =
         price > ema50 &&
-        rsi >= 48 &&
-        rsi <= 68 &&
-        bullishCandle &&
-        (!ema200Available || price > ema200);
+        rsi >= 50 &&
+        rsi < 70 &&
+        bullishCandle;
 
+    // Conditions de vente : prix sous l'EMA 50,
+    // RSI baissier et dernière bougie confirmant la baisse.
     const sellCondition =
         price < ema50 &&
-        rsi >= 32 &&
-        rsi <= 52 &&
-        bearishCandle &&
-        (!ema200Available || price < ema200);
+        rsi > 30 &&
+        rsi <= 50 &&
+        bearishCandle;
 
     if (buyCondition) {
         const entry = price;
-        const stopLoss = entry - atr * CONFIG.ATR_STOP_MULTIPLIER;
+        const stopLoss =
+            entry - atr * CONFIG.ATR_STOP_MULTIPLIER;
+
         const takeProfit =
             entry + (entry - stopLoss) * CONFIG.RISK_REWARD;
 
         return {
             type: "BUY",
-            reason: ema200Available
-                ? "ACHAT : prix au-dessus des EMA de référence, RSI favorable et confirmation haussière."
-                : "ACHAT provisoire : conditions haussières réunies, mais EMA 200 indisponible.",
+            reason:
+                "Signal d'achat : prix au-dessus de l'EMA 50, momentum haussier et bougie de confirmation.",
             entry,
             stopLoss,
             takeProfit,
@@ -603,15 +591,16 @@ function generateSignal(data) {
 
     if (sellCondition) {
         const entry = price;
-        const stopLoss = entry + atr * CONFIG.ATR_STOP_MULTIPLIER;
+        const stopLoss =
+            entry + atr * CONFIG.ATR_STOP_MULTIPLIER;
+
         const takeProfit =
             entry - (stopLoss - entry) * CONFIG.RISK_REWARD;
 
         return {
             type: "SELL",
-            reason: ema200Available
-                ? "VENTE : prix sous les EMA de référence, RSI favorable et confirmation baissière."
-                : "VENTE provisoire : conditions baissières réunies, mais EMA 200 indisponible.",
+            reason:
+                "Signal de vente : prix sous l'EMA 50, momentum baissier et bougie de confirmation.",
             entry,
             stopLoss,
             takeProfit,
@@ -621,7 +610,8 @@ function generateSignal(data) {
 
     return {
         type: "WAIT",
-        reason: "Les conditions du mode équilibré ne sont pas toutes réunies. Attends une meilleure configuration."
+        reason:
+            "Aucune configuration suffisamment confirmée pour le moment. Attends le prochain signal."
     };
 }
 
@@ -639,7 +629,11 @@ function displaySignal(signal) {
         WAIT: "ATTENDRE"
     };
 
-    setText("signal-badge", labels[signal.type] || "ATTENDRE");
+    setText(
+        "signal-badge",
+        labels[signal.type] || "ATTENDRE"
+    );
+
     setText("signal-reason", signal.reason);
 
     if (badge) {
@@ -656,17 +650,23 @@ function displaySignal(signal) {
 
     setText(
         "entry-price",
-        Number.isFinite(signal.entry) ? formatPrice(signal.entry) : "—"
+        Number.isFinite(signal.entry)
+            ? formatPrice(signal.entry)
+            : "—"
     );
 
     setText(
         "stop-loss",
-        Number.isFinite(signal.stopLoss) ? formatPrice(signal.stopLoss) : "—"
+        Number.isFinite(signal.stopLoss)
+            ? formatPrice(signal.stopLoss)
+            : "—"
     );
 
     setText(
         "take-profit",
-        Number.isFinite(signal.takeProfit) ? formatPrice(signal.takeProfit) : "—"
+        Number.isFinite(signal.takeProfit)
+            ? formatPrice(signal.takeProfit)
+            : "—"
     );
 
     setText(
@@ -679,21 +679,30 @@ function displaySignal(signal) {
 
 
 // ==================================================
-// 14. ANALYSE H1
+// 14. ANALYSE DU MARCHÉ H1
 // ==================================================
 
 function analyzeMarket(candles, quote) {
     const closes = candles.map(candle => candle.close);
 
-    const ema50Series = calculateEMA(closes, CONFIG.EMA_FAST);
-    const ema200Series = calculateEMA(closes, CONFIG.EMA_SLOW);
-    const rsiSeries = calculateRSI(closes, CONFIG.RSI_PERIOD);
-    const atrSeries = calculateATR(candles, CONFIG.ATR_PERIOD);
+    const ema50Series = calculateEMA(
+        closes,
+        CONFIG.EMA_PERIOD
+    );
+
+    const rsiSeries = calculateRSI(
+        closes,
+        CONFIG.RSI_PERIOD
+    );
+
+    const atrSeries = calculateATR(
+        candles,
+        CONFIG.ATR_PERIOD
+    );
 
     const lastIndex = candles.length - 1;
 
     const ema50 = ema50Series[lastIndex];
-    const ema200 = ema200Series[lastIndex];
     const rsi = rsiSeries[lastIndex];
     const atr = atrSeries[lastIndex];
 
@@ -702,7 +711,6 @@ function analyzeMarket(candles, quote) {
 
     displayIndicators({
         ema50,
-        ema200,
         rsi,
         atr,
         price: quote.mid
@@ -726,7 +734,6 @@ function analyzeMarket(candles, quote) {
     const signal = generateSignal({
         price: quote.mid,
         ema50,
-        ema200,
         rsi,
         atr,
         previousClose: previousCandle.close,
@@ -736,8 +743,8 @@ function analyzeMarket(candles, quote) {
     displaySignal(signal);
 
     return {
-        ema200,
-        candleCount: candles.length
+        candleCount: candles.length,
+        signalType: signal.type
     };
 }
 
@@ -772,7 +779,7 @@ async function refreshData() {
         let quoteError = null;
         let candlesError = null;
 
-        // Traitement de la cotation.
+        // Récupération du prix.
         if (results[0].status === "fulfilled") {
             try {
                 quote = validateQuote(results[0].value);
@@ -786,7 +793,7 @@ async function refreshData() {
                 : "Erreur inconnue lors de la récupération du prix.";
         }
 
-        // Traitement des bougies.
+        // Récupération des bougies H1.
         if (results[1].status === "fulfilled") {
             try {
                 candles = normalizeCandles(results[1].value);
@@ -799,38 +806,39 @@ async function refreshData() {
                 : "Erreur inconnue lors de la récupération des bougies.";
         }
 
-        // Affiche toutes les erreurs éventuelles.
         const messages = [];
 
-        if (quoteError) messages.push("Prix : " + quoteError);
-        if (candlesError) messages.push("Historique : " + candlesError);
+        if (quoteError) {
+            messages.push("Prix : " + quoteError);
+        }
+
+        if (candlesError) {
+            messages.push("Historique : " + candlesError);
+        }
 
         if (messages.length > 0) {
             showError(messages.join(" | "));
         }
 
-        // Analyse si les deux sources sont disponibles.
         if (quote && candles) {
-            const result = analyzeMarket(candles, quote);
+            analyzeMarket(candles, quote);
 
-            if (!Number.isFinite(result.ema200)) {
-                showError(
-                    "Analyse effectuée avec " +
-                    result.candleCount +
-                    " bougies H1. L'EMA 200 est indisponible faute " +
-                    "d'un historique suffisant. Tout signal éventuel est provisoire."
-                );
-            }
-
-            setConnectionStatus(true, "Données reçues de Biquote");
+            setConnectionStatus(
+                true,
+                "Données reçues de Biquote"
+            );
 
         } else {
             displaySignal({
                 type: "WAIT",
-                reason: "Analyse incomplète : vérifie les données et la connexion à Biquote."
+                reason:
+                    "Analyse incomplète : vérifie les données et la connexion à Biquote."
             });
 
-            setConnectionStatus(false, "Données indisponibles");
+            setConnectionStatus(
+                false,
+                "Données indisponibles"
+            );
         }
 
     } catch (error) {
@@ -842,7 +850,8 @@ async function refreshData() {
 
         displaySignal({
             type: "WAIT",
-            reason: "Impossible de terminer l'analyse. Vérifie le message d'erreur."
+            reason:
+                "Impossible de terminer l'analyse. Vérifie le message d'erreur."
         });
 
     } finally {
@@ -909,4 +918,4 @@ if (document.readyState === "loading") {
 } else {
     initializeDashboard();
 }
-      
+  
