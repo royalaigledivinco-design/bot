@@ -13,15 +13,27 @@
     box-sizing: border-box;
 }
 
+html {
+    min-height: 100%;
+    -webkit-text-size-adjust: 100%;
+}
+
 body {
+    min-height: 100vh;
     margin: 0;
-    background: radial-gradient(
-        ellipse at top right,
-        #17243a 0,
-        var(--background) 50%
-    );
+    background:
+        radial-gradient(
+            ellipse at top right,
+            #17243a 0,
+            var(--background) 55%
+        );
     color: var(--text);
     font-family: Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+
+button {
+    font: inherit;
 }
 
 .topbar {
@@ -30,9 +42,11 @@ body {
     gap: 14px;
     padding: 22px max(16px, calc((100% - 1180px) / 2));
     border-bottom: 1px solid var(--border);
+    background: rgba(8, 14, 25, 0.65);
 }
 
 .logo {
+    flex: 0 0 48px;
     width: 48px;
     height: 48px;
     display: grid;
@@ -42,11 +56,13 @@ body {
     background: linear-gradient(145deg, #ffe6a0, #c28b2b);
     font-weight: 900;
     font-size: 22px;
+    box-shadow: 0 5px 18px rgba(242, 198, 109, 0.12);
 }
 
 h1 {
     margin: 0;
     font-size: 24px;
+    letter-spacing: -0.5px;
 }
 
 h1 span {
@@ -71,17 +87,19 @@ h1 span {
 }
 
 #status-dot {
+    flex: 0 0 9px;
     width: 9px;
     height: 9px;
     border-radius: 50%;
     background: var(--gold);
 }
 
-#status-dot.ok {
+#status-dot.connected {
     background: var(--green);
+    box-shadow: 0 0 9px rgba(55, 214, 154, 0.45);
 }
 
-#status-dot.error {
+#status-dot.disconnected {
     background: var(--red);
 }
 
@@ -91,11 +109,13 @@ main {
 }
 
 .panel {
+    min-width: 0;
     padding: 23px;
     border: 1px solid var(--border);
     border-radius: 17px;
     background: linear-gradient(145deg, #131f31, #0d1625);
     margin-bottom: 18px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 }
 
 .hero {
@@ -116,11 +136,21 @@ main {
 #current-price {
     font-size: clamp(30px, 5vw, 46px);
     font-weight: bold;
+    letter-spacing: -1px;
+    font-variant-numeric: tabular-nums;
 }
 
 #price-change {
     color: var(--muted);
     font-size: 12px;
+}
+
+#price-change.positive {
+    color: var(--green);
+}
+
+#price-change.negative {
+    color: var(--red);
 }
 
 .muted {
@@ -139,9 +169,11 @@ main {
 
 .refresh-box strong {
     font-size: 23px;
+    font-variant-numeric: tabular-nums;
 }
 
 button {
+    min-height: 44px;
     padding: 11px 14px;
     border-radius: 9px;
     border: 1px solid #354963;
@@ -149,20 +181,37 @@ button {
     color: var(--text);
     font-weight: bold;
     cursor: pointer;
+    transition:
+        background 0.2s ease,
+        border-color 0.2s ease,
+        opacity 0.2s ease;
+    touch-action: manipulation;
 }
 
 button:hover {
     background: #30445f;
+    border-color: var(--gold);
+}
+
+button:active {
+    transform: scale(0.99);
+}
+
+button:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 3px;
 }
 
 button:disabled {
     opacity: 0.5;
+    cursor: wait;
 }
 
 .grid {
     display: grid;
     grid-template-columns: 1.08fr 0.92fr;
     gap: 18px;
+    align-items: stretch;
 }
 
 .section-heading {
@@ -179,6 +228,7 @@ h2 {
 }
 
 .tag {
+    flex-shrink: 0;
     border: 1px solid #34465d;
     color: var(--muted);
     border-radius: 6px;
@@ -189,26 +239,31 @@ h2 {
 
 .signal-badge {
     display: inline-block;
+    max-width: 100%;
     padding: 12px 17px;
     border-radius: 10px;
     font-size: 18px;
     font-weight: 900;
     letter-spacing: 1px;
+    overflow-wrap: anywhere;
 }
 
 .signal-badge.buy {
     background: #123b32;
     color: var(--green);
+    border: 1px solid rgba(55, 214, 154, 0.2);
 }
 
 .signal-badge.sell {
     background: #421f2b;
     color: var(--red);
+    border: 1px solid rgba(255, 107, 121, 0.2);
 }
 
 .signal-badge.wait {
     background: #302b20;
     color: var(--gold);
+    border: 1px solid rgba(242, 198, 109, 0.2);
 }
 
 #signal-reason {
@@ -240,12 +295,14 @@ h2 {
     color: var(--muted);
     font-size: 11px;
     margin-bottom: 7px;
+    line-height: 1.5;
 }
 
 .data-box strong,
 .indicator strong {
     font-size: 16px;
     overflow-wrap: anywhere;
+    font-variant-numeric: tabular-nums;
 }
 
 .indicator strong {
@@ -256,13 +313,14 @@ h2 {
 
 .indicator small {
     font-size: 10px;
+    margin-bottom: 0;
 }
 
 .disclaimer {
     margin-top: 15px;
     color: var(--muted);
     font-size: 10px;
-    line-height: 1.6;
+    line-height: 1.7;
 }
 
 .market-grid {
@@ -271,6 +329,7 @@ h2 {
 
 .market-grid .data-box strong {
     font-size: 13px;
+    line-height: 1.5;
 }
 
 .error-panel {
@@ -280,11 +339,21 @@ h2 {
     background: #321a25;
     color: #ffdce0;
     margin-bottom: 18px;
+    overflow-wrap: anywhere;
+}
+
+.error-panel[hidden] {
+    display: none;
+}
+
+.error-panel strong {
+    font-size: 13px;
 }
 
 .error-panel p {
+    margin-bottom: 0;
     font-size: 12px;
-    line-height: 1.6;
+    line-height: 1.7;
 }
 
 footer {
@@ -292,34 +361,69 @@ footer {
     color: var(--muted);
     font-size: 11px;
     line-height: 1.7;
+    text-align: center;
 }
+
+footer p {
+    margin: 5px 0;
+}
+
+/* TABLETTES ET TÉLÉPHONES */
 
 @media (max-width: 760px) {
     .topbar {
-        padding: 18px 12px;
+        gap: 10px;
+        padding: 17px 12px;
+    }
+
+    .logo {
+        flex-basis: 42px;
+        width: 42px;
+        height: 42px;
+        font-size: 20px;
+    }
+
+    h1 {
+        font-size: 20px;
+    }
+
+    .eyebrow {
+        font-size: 9px;
+        letter-spacing: 1px;
     }
 
     .status {
-        max-width: 110px;
+        max-width: 115px;
+        gap: 6px;
         font-size: 10px;
+        overflow-wrap: anywhere;
     }
 
     main {
         width: calc(100% - 20px);
         margin-top: 15px;
+        margin-bottom: 25px;
     }
 
     .panel {
         padding: 16px;
+        border-radius: 14px;
+        margin-bottom: 14px;
     }
 
     .hero {
         align-items: flex-start;
         flex-direction: column;
+        gap: 17px;
+    }
+
+    #current-price {
+        font-size: clamp(29px, 8vw, 40px);
     }
 
     .refresh-box {
         width: 100%;
+        min-width: 0;
         align-items: flex-start;
     }
 
@@ -328,10 +432,87 @@ footer {
     }
 
     .grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0;
+    }
+
+    .section-heading {
+        margin-bottom: 18px;
+    }
+
+    .signal-data,
+    .indicators {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .market-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
-  }
+
+    .data-box,
+    .indicator {
+        padding: 12px;
+    }
+
+    .indicator strong {
+        font-size: 19px;
+    }
+}
+
+/* PETITS ÉCRANS */
+
+@media (max-width: 360px) {
+    .topbar {
+        gap: 8px;
+        padding: 14px 9px;
+    }
+
+    .logo {
+        flex-basis: 36px;
+        width: 36px;
+        height: 36px;
+        font-size: 17px;
+    }
+
+    h1 {
+        font-size: 17px;
+    }
+
+    .status {
+        max-width: 95px;
+        font-size: 9px;
+    }
+
+    main {
+        width: calc(100% - 14px);
+    }
+
+    .panel {
+        padding: 12px;
+    }
+
+    .data-box,
+    .indicator {
+        padding: 10px;
+    }
+
+    .data-box strong {
+        font-size: 14px;
+    }
+
+    .signal-badge {
+        padding: 10px 12px;
+        font-size: 16px;
+    }
+}
+
+/* ACCESSIBILITÉ */
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        transition: none !important;
+    }
+    }
