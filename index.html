@@ -5,12 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#0b1220">
 
+    <meta name="description" content="Tableau de bord d'analyse technique XAUUSD H1 avec signaux indicatifs, EMA 50, RSI 14 et ATR 14.">
+
     <title>TRADING INTELLIGENCE | XAUUSD H1</title>
 
     <link rel="stylesheet" href="style.css">
 
-    <!-- Chargement du JavaScript -->
-    <script src="app.js?v=4" defer></script>
+    <!-- Chargement du JavaScript corrigé -->
+    <script src="app.js?v=5" defer></script>
 </head>
 
 <body>
@@ -25,8 +27,8 @@
     </div>
 
     <div class="status">
-        <span id="status-dot"></span>
-        <span id="connection-status">Connexion...</span>
+        <span id="status-dot" class="disconnected"></span>
+        <span id="connection-status">Connexion à Biquote...</span>
     </div>
 
 </header>
@@ -58,7 +60,7 @@
                 <span id="countdown">60</span> s
             </strong>
 
-            <button id="refresh-button">
+            <button id="refresh-button" type="button">
                 Actualiser maintenant
             </button>
         </div>
@@ -66,11 +68,9 @@
     </section>
 
 
-    <!-- SIGNAL ET INDICATEURS -->
+    <!-- SIGNAL DE TRADING -->
 
     <section class="grid">
-
-        <!-- SIGNAL DE TRADING -->
 
         <article class="panel">
 
@@ -84,7 +84,7 @@
             </div>
 
             <p id="signal-reason" class="muted">
-                Analyse du marché...
+                Récupération des données du marché...
             </p>
 
             <div class="signal-data">
@@ -112,14 +112,15 @@
             </div>
 
             <p class="disclaimer">
-                Signaux indicatifs. Vérifie le prix et le spread chez ton
-                courtier. Aucun ordre n'est exécuté automatiquement.
+                Signaux indicatifs. Vérifie le prix, le spread et les
+                conditions d'exécution chez ton courtier.
+                Aucun ordre n'est exécuté automatiquement.
             </p>
 
         </article>
 
 
-        <!-- INDICATEURS TECHNIQUES -->
+        <!-- INDICATEURS TECHNIQUES : EMA 200 SUPPRIMÉE -->
 
         <article class="panel">
 
@@ -134,12 +135,6 @@
                     <span>EMA 50</span>
                     <strong id="ema-fast">—</strong>
                     <small id="ema-fast-note">En attente</small>
-                </div>
-
-                <div class="indicator">
-                    <span>EMA 200</span>
-                    <strong id="ema-slow">—</strong>
-                    <small id="ema-slow-note">En attente</small>
                 </div>
 
                 <div class="indicator">
@@ -215,6 +210,10 @@
         <p>XAUUSD Trading Signals — Analyse technique H1</p>
 
         <p>Données : Biquote API</p>
+
+        <p>
+            EMA 50 · RSI 14 · ATR 14
+        </p>
 
         <p>
             Les signaux sont indicatifs et ne garantissent aucun bénéfice.
